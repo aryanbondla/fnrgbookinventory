@@ -65,7 +65,10 @@
 </section>
 
 <section class="table-card">
-  <h3>My Recent Entries</h3>
+  <div class="card-header-row">
+    <h3>My Recent Entries</h3>
+    <a href="{{ url_for('books.export_sell_entries') }}" class="link-download">Download .xlsx &darr;</a>
+  </div>
   <div class="table-scroll-y">
     <table class="data-table">
       <thead>

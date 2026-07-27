@@ -32,7 +32,10 @@
 
 {% if is_admin %}
 <section class="table-card">
-  <h3>Top Distributors</h3>
+  <div class="card-header-row">
+    <h3>Top Distributors</h3>
+    <a href="{{ url_for('books.export_leaderboard') }}?{{ request.query_string.decode() }}" class="link-download">Download .xlsx &darr;</a>
+  </div>
 
   {{ filter_bar('dist_', filters, is_admin, sellers, events) }}
 
@@ -59,7 +62,10 @@
 {% endif %}
 
 <section class="table-card">
-  <h3>{{ 'My Top Books' if not is_admin else 'Top Books' }}</h3>
+  <div class="card-header-row">
+    <h3>{{ 'My Top Books' if not is_admin else 'Top Books' }}</h3>
+    <a href="{{ url_for('books.export_top_books') }}?{{ request.query_string.decode() }}" class="link-download">Download .xlsx &darr;</a>
+  </div>
 
   {{ filter_bar('books_', filters, is_admin, sellers, events) }}
 
@@ -85,9 +91,12 @@
 <section class="table-card">
   <div class="card-header-row">
     <h3>Book Inventory Updates {{ '(all sellers, all time)' if is_admin else '' }}</h3>
-    <div class="corner-badge">
-      <span class="corner-badge-label">Total Books Available</span>
-      <span class="corner-badge-value">{{ total_available }}</span>
+    <div class="header-actions">
+      <a href="{{ url_for('books.export_inventory') }}?{{ request.query_string.decode() }}" class="link-download">Download .xlsx &darr;</a>
+      <div class="corner-badge">
+        <span class="corner-badge-label">Total Books Available</span>
+        <span class="corner-badge-value">{{ total_available }}</span>
+      </div>
     </div>
   </div>
 

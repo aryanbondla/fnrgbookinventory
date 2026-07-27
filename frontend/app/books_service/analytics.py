@@ -165,7 +165,8 @@ def inventory_snapshot(sales, initial_stock, books, purchases=None, perf_sales=N
         received_by_title[p["title"]] += p["qty"]
 
     rows = []
-    for title, category in books:
+    for book in books:
+        title, category = book["title"], book["category"]
         stock = initial_stock.get(title, 0)
         received = received_by_title.get(title, 0)
         sold = sold_by_title.get(title, 0)
