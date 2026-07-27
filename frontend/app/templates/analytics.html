@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Analytics — FNRG Preaching{% endblock %}
+{% block page_title %}Profit &amp; Loss Analytics{% endblock %}
+
+{% block content %}
+<p class="content-subtitle">Filter by date range and seller to see how the book table is performing.</p>
+
+<form method="GET" action="{{ url_for('books.analytics_page') }}" class="filter-bar">
+  <div class="field">
+    <label for="date_from">From</label>
+    <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="date_to">To</label>
+    <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+  </div>
+  <div class="field">
+    <label for="seller">Seller</label>
+    <select id="seller" name="seller">
+      <option value="all" {{ 'selected' if selected_seller == 'all' }}>All Users</option>
+      {% for s in sellers %}
+      <option value="{{ s }}" {{ 'selected' if selected_seller == s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="location">Location</label>
+    <select id="location" name="location">
+      <option value="all" {{ 'selected' if selected_location == 'all' }}>All Locations</option>
+      {% for l in locations %}
+      <option value="{{ l }}" {{ 'selected' if selected_location == l }}>{{ l }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-filter">Apply Filters</button>
+</form>
+
+<section class="kpi-row">
+  <div class="kpi-card">
+    <span class="kpi-label">Orders</span>
+    <span class="kpi-value">{{ kpis.orders }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-label">Books Sold</span>
+    <span class="kpi-value">{{ kpis.qty }}</span>
+  </div>
+  <div class="kpi-card kpi-accent-green">
+    <span class="kpi-label">Revenue</span>
+    <span class="kpi-value">₹{{ "{:,.0f}".format(kpis.revenue) }}</span>
+  </div>
+  <div class="kpi-card kpi-accent-teal">
+    <span class="kpi-label">Profit</span>
+    <span class="kpi-value">₹{{ "{:,.0f}".format(kpis.profit) }}</span>
+  </div>
+  <div class="kpi-card kpi-accent-red">
+    <span class="kpi-label">Loss</span>
+    <span class="kpi-value">₹{{ "{:,.0f}".format(kpis.loss) }}</span>
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="chart-card">
+    <h3>Revenue &amp; Profit Over Time</h3>
+    <canvas id="trendChart" height="230"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>Profit by Category</h3>
+    <canvas id="profitCatChart" height="230"></canvas>
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="chart-card">
+    <h3>Quantity Sold by Category</h3>
+    <canvas id="qtyCatChart" height="230"></canvas>
+  </div>
+  <div class="table-card">
+    <h3>Top Books</h3>
+    <table class="data-table">
+      <thead><tr><th>Title</th><th>Qty</th><th>Profit</th></tr></thead>
+      <tbody>
+        {% for b in top_books %}
+        <tr>
+          <td>{{ b.title }}</td>
+          <td>{{ b.qty }}</td>
+          <td class="{{ 'text-green' if b.profit >= 0 else 'text-red' }}">₹{{ "{:,.0f}".format(b.profit) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty-cell">No sales in this range.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-card">
+  <h3>Seller Leaderboard</h3>
+  <table class="data-table">
+    <thead><tr><th>Seller</th><th>Qty</th><th>Revenue</th><th>Profit</th></tr></thead>
+    <tbody>
+      {% for row in leaderboard %}
+      <tr>
+        <td>{{ row.seller }}</td>
+        <td>{{ row.qty }}</td>
+        <td>₹{{ "{:,.0f}".format(row.revenue) }}</td>
+        <td class="{{ 'text-green' if row.profit >= 0 else 'text-red' }}">₹{{ "{:,.0f}".format(row.profit) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty-cell">No sellers matched this filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="grid-2">
+  <div class="table-card">
+    <h3>Sales by Location</h3>
+    <table class="data-table">
+      <thead><tr><th>Location</th><th>Orders</th><th>Qty</th><th>Revenue</th><th>Profit</th></tr></thead>
+      <tbody>
+        {% for row in by_location %}
+        <tr>
+          <td>{{ row.location }}</td>
+          <td>{{ row.orders }}</td>
+          <td>{{ row.qty }}</td>
+          <td>₹{{ "{:,.0f}".format(row.revenue) }}</td>
+          <td class="{{ 'text-green' if row.profit >= 0 else 'text-red' }}">₹{{ "{:,.0f}".format(row.profit) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-cell">No sales matched this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="chart-card">
+    <h3>Books Sold by Language</h3>
+    <canvas id="langChart" height="230"></canvas>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const trendData = {{ trend | tojson }};
+  const profitCat = {{ profit_cat | tojson }};
+  const qtyCat = {{ qty_cat | tojson }};
+
+  new Chart(document.getElementById("trendChart"), {
+    type: "line",
+    data: {
+      labels: trendData.labels,
+      datasets: [
+        { label: "Revenue", data: trendData.revenue, borderColor: "#17a06a", backgroundColor: "rgba(23,160,106,0.12)", tension: 0.35, fill: true, pointRadius: 2 },
+        { label: "Profit", data: trendData.profit, borderColor: "#c98a2a", backgroundColor: "rgba(201,138,42,0.10)", tension: 0.35, fill: true, pointRadius: 2 },
+      ],
+    },
+    options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { x: { grid: { display: false } } } },
+  });
+
+  new Chart(document.getElementById("profitCatChart"), {
+    type: "bar",
+    data: {
+      labels: profitCat.labels,
+      datasets: [{ label: "Profit (₹)", data: profitCat.values, backgroundColor: profitCat.values.map(v => v >= 0 ? "#17a06a" : "#c0392b"), borderRadius: 6 }],
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
+  });
+
+  new Chart(document.getElementById("qtyCatChart"), {
+    type: "polarArea",
+    data: {
+      labels: qtyCat.labels,
+      datasets: [{ data: qtyCat.values, backgroundColor: ["#17a06a","#0b5d4a","#c98a2a","#4a9a3a","#8fbf7a","#e2b23a","#2f7a5c"] }],
+    },
+    options: { responsive: true, plugins: { legend: { position: "right" } } },
+  });
+
+  const langData = {{ by_language | tojson }};
+  new Chart(document.getElementById("langChart"), {
+    type: "bar",
+    data: {
+      labels: langData.labels,
+      datasets: [{ label: "Books Sold", data: langData.values, backgroundColor: "#0b5d4a", borderRadius: 6 }],
+    },
+    options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { color: "rgba(11,93,74,0.08)" } } } },
+  });
+</script>
+{% endblock %}

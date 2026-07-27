@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Inward Stock — FNRG Preaching{% endblock %}
+{% block page_title %}Inward Stock{% endblock %}
+
+{% block content %}
+<p class="content-subtitle">Record books coming into stock from a purchase, printer order, or donation.</p>
+
+<div class="row-actions">
+  <button type="button" class="btn-add-row" id="addBookBtn">+ Add New Book</button>
+</div>
+
+<section class="form-card">
+  <h3>New Purchase</h3>
+  <form class="stacked-form" id="purchaseForm" method="POST" action="{{ url_for('books.inward_stock') }}">
+
+    <!-- Batch-level info: applies to every row below -->
+    <div class="batch-meta cols-3">
+      <div class="field">
+        <label>Recorded By</label>
+        <div class="static-field">{{ current_user.name if current_user else '—' }}</div>
+      </div>
+
+      <div class="field">
+        <label for="purchaseDate">Purchase Date</label>
+        <input type="date" id="purchaseDate" name="purchase_date" required>
+      </div>
+
+      <div class="field">
+        <label for="source">Source Purchased From</label>
+        <input list="source-list" id="source" name="source" placeholder="e.g. BBT Chennai Press" required>
+        <datalist id="source-list">
+          {% for s in sources %}<option value="{{ s }}">{% endfor %}
+        </datalist>
+      </div>
+    </div>
+
+    <!-- Repeatable book purchase rows -->
+    <div class="table-scroll-x">
+    <table class="rows-table" id="rowsTable">
+      <thead>
+        <tr>
+          <th class="col-book">Book Title</th>
+          <th class="col-short">Short Title</th>
+          <th class="col-lang">Language</th>
+          <th class="col-cat">Category</th>
+          <th class="col-qty">Qty Purchased</th>
+          <th class="col-price">Cost / Unit</th>
+          <th class="col-remove"></th>
+        </tr>
+      </thead>
+      <tbody id="rowsBody">
+        <!-- rows are cloned in here from #rowTemplate -->
+      </tbody>
+    </table>
+    </div>
+
+    <datalist id="book-titles">
+      {% for b in book_catalog %}<option value="{{ b.title }}">{% endfor %}
+    </datalist>
+
+    <div class="row-actions">
+      <button type="button" class="btn-add-row" id="addRowBtn">+ Add Another Book</button>
+    </div>
+
+    <button type="submit" class="btn-enter">Submit</button>
+  </form>
+</section>
+
+<section class="table-card">
+  <h3>Recent Purchases</h3>
+  <div class="table-scroll-y">
+    <table class="data-table" id="recentPurchasesTable">
+      <thead>
+        <tr>
+          <th>Purchase Date</th><th>Book Title</th><th>Short Title</th>
+          <th>Category</th><th>Language</th><th>Source</th><th>Qty</th><th>Cost/Unit</th>
+        </tr>
+      </thead>
+      <tbody id="recentPurchasesBody">
+        {% if recent_purchases %}
+          {% for p in recent_purchases %}
+          <tr>
+            <td>{{ p.date }}</td>
+            <td>{{ p.title }}</td>
+            <td>{{ p.short_title or "—" }}</td>
+            <td>{{ p.category }}</td>
+            <td>{{ p.language }}</td>
+            <td>{{ p.source }}</td>
+            <td>{{ p.qty }}</td>
+            <td>&#8377;{{ "{:,.2f}".format(p.cost_price) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="8" class="empty-cell">No purchases recorded yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Hidden template for one purchase row -->
+<template id="rowTemplate">
+  <tr class="book-row">
+    <td class="col-book" data-label="Book Title">
+      <input type="text" name="title[]" list="book-titles" class="row-title" placeholder="e.g. Bhagavad Gita As It Is" required>
+    </td>
+    <td class="col-short" data-label="Short Title">
+      <input type="text" name="short[]" class="row-short" placeholder="e.g. BG" maxlength="40">
+    </td>
+    <td class="col-lang" data-label="Language">
+      <select name="language[]" class="row-lang" required>
+        <option value="" disabled selected>Language</option>
+        {% for l in languages %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+      </select>
+    </td>
+    <td class="col-cat" data-label="Category">
+      <select name="category[]" class="row-cat" required>
+        <option value="" disabled selected>Category</option>
+        {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+    </td>
+    <td class="col-qty" data-label="Qty Purchased">
+      <input type="number" name="qty[]" class="row-qty" min="0" step="1" value="0" required>
+    </td>
+    <td class="col-price" data-label="Cost / Unit">
+      <input type="number" name="cost[]" class="row-cost" placeholder="e.g. 95" min="0" step="0.01" required>
+    </td>
+    <td class="col-remove">
+      <button type="button" class="btn-remove-row" title="Remove this book">&times;</button>
+    </td>
+  </tr>
+</template>
+
+<!-- Add New Book modal -->
+<div class="modal-overlay" id="addBookOverlay">
+  <div class="modal-panel">
+    <h3>Add New Book</h3>
+    <p class="hint-text">Adds this title to the dropdowns above so it can be purchased right away.</p>
+    <form id="addBookForm" class="stacked-form">
+      <div class="field">
+        <label for="newTitle">Book Title</label>
+        <input type="text" id="newTitle" placeholder="e.g. Teachings of Lord Kapila" required>
+      </div>
+      <div class="field">
+        <label for="newShort">Short Title</label>
+        <input type="text" id="newShort" placeholder="e.g. TLK" maxlength="40">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="newLang">Default Language</label>
+          <select id="newLang" required>
+            <option value="" disabled selected>Select a language</option>
+            {% for l in languages %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="newCat">Category</label>
+          <select id="newCat" required>
+            <option value="" disabled selected>Select a category</option>
+            {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            <option value="__new__">+ New category…</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="newCatCustomField" style="display:none;">
+        <label for="newCatCustom">New Category Name</label>
+        <input type="text" id="newCatCustom" placeholder="e.g. Children's Books">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-toggle" id="cancelAddBook">Cancel</button>
+        <button type="submit" class="btn-enter">Save Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("purchaseDate").valueAsDate = new Date();
+
+  // Real catalog data from the backend: [{title, category}, ...]
+  const BOOK_CATALOG = {{ book_catalog | tojson }};
+
+  // title -> {shorthand, category, language}. Seeded from BOOK_CATALOG
+  // (language defaults to English since the catalog doesn't track that
+  // yet); "Add New Book" appends to this so newly-typed titles also get
+  // autofill immediately, without needing a page reload.
+  const BOOK_META = {};
+  BOOK_CATALOG.forEach(b => {
+    BOOK_META[b.title] = {
+      shorthand: b.title.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 40),
+      category: b.category,
+      language: "English",
+    };
+  });
+
+  const bookTitleDatalist = document.getElementById("book-titles");
+  const rowsBody = document.getElementById("rowsBody");
+  const rowTemplate = document.getElementById("rowTemplate");
+  const addRowBtn = document.getElementById("addRowBtn");
+  const purchaseForm = document.getElementById("purchaseForm");
+
+  function addBookTitleOption(title) {
+    const opt = document.createElement("option");
+    opt.value = title;
+    bookTitleDatalist.appendChild(opt);
+  }
+
+  function wireRow(row) {
+    const titleInput = row.querySelector(".row-title");
+    const shortInput = row.querySelector(".row-short");
+    const langSelect = row.querySelector(".row-lang");
+    const catSelect = row.querySelector(".row-cat");
+
+    titleInput.addEventListener("input", () => {
+      const meta = BOOK_META[titleInput.value.trim()];
+      if (meta) {
+        if (!shortInput.value) shortInput.value = meta.shorthand;
+        if (meta.language) langSelect.value = meta.language;
+        if (meta.category) catSelect.value = meta.category;
+      }
+    });
+
+    row.querySelector(".btn-remove-row").addEventListener("click", () => {
+      if (rowsBody.querySelectorAll(".book-row").length > 1) {
+        row.remove();
+      }
+    });
+  }
+
+  function addRow() {
+    const fragment = rowTemplate.content.cloneNode(true);
+    const row = fragment.querySelector(".book-row");
+    rowsBody.appendChild(fragment);
+    wireRow(row);
+  }
+
+  addRowBtn.addEventListener("click", addRow);
+  addRow();
+
+  // The form now submits normally (a real POST to the server) so
+  // purchases are actually saved and reflected in Dashboard inventory —
+  // no e.preventDefault() here. The server re-renders "Recent Purchases"
+  // and this page reloads after redirect, so no client-side rendering
+  // of that table is needed any more.
+
+  // --- Add New Book modal ---
+  const addBookBtn = document.getElementById("addBookBtn");
+  const addBookOverlay = document.getElementById("addBookOverlay");
+  const cancelAddBook = document.getElementById("cancelAddBook");
+  const addBookForm = document.getElementById("addBookForm");
+  const newCatSelect = document.getElementById("newCat");
+  const newCatCustomField = document.getElementById("newCatCustomField");
+  const newCatCustomInput = document.getElementById("newCatCustom");
+
+  function openModal() { addBookOverlay.classList.add("visible"); }
+  function closeModal() { addBookOverlay.classList.remove("visible"); addBookForm.reset(); newCatCustomField.style.display = "none"; }
+
+  addBookBtn.addEventListener("click", openModal);
+  cancelAddBook.addEventListener("click", closeModal);
+  addBookOverlay.addEventListener("click", (e) => { if (e.target === addBookOverlay) closeModal(); });
+
+  newCatSelect.addEventListener("change", () => {
+    newCatCustomField.style.display = newCatSelect.value === "__new__" ? "block" : "none";
+  });
+
+  addBookForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const title = document.getElementById("newTitle").value.trim();
+    const shorthand = document.getElementById("newShort").value.trim();
+    const language = document.getElementById("newLang").value;
+    let category = newCatSelect.value;
+    if (category === "__new__") category = newCatCustomInput.value.trim();
+    if (!title || !language || !category) return;
+
+    BOOK_META[title] = { shorthand, category, language };
+    addBookTitleOption(title);
+
+    // Also make the new category selectable in every row's Category dropdown.
+    if (![...document.querySelectorAll(".row-cat option")].some(o => o.value === category)) {
+      document.querySelectorAll(".row-cat, #newCat").forEach(select => {
+        const opt = document.createElement("option");
+        opt.value = category;
+        opt.textContent = category;
+        select.insertBefore(opt, select.querySelector('option[value="__new__"]') || null);
+      });
+    }
+
+    closeModal();
+  });
+</script>
+{% endblock %}d

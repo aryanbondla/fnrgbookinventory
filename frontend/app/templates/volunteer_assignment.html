@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Volunteer Assignment — FNRG Preaching{% endblock %}
+{% block page_title %}Volunteer Assignment{% endblock %}
+
+{% block content %}
+<p class="content-subtitle">Assign volunteers to locations/events and see who's covering what at a glance.</p>
+
+<section class="form-card">
+  <h3>New Assignment</h3>
+  <form class="stacked-form" id="assignForm">
+    <div class="field-row">
+      <div class="field">
+        <label for="volunteer">Volunteer</label>
+        <select id="volunteer" required>
+          <option value="" disabled selected>Select a volunteer</option>
+          {% for v in volunteers %}<option value="{{ v.name }}">{{ v.name }} ({{ v.username }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="assignLocation">Location / Event</label>
+        <select id="assignLocation" required>
+          <option value="" disabled selected>Select a location</option>
+          {% for l in locations %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="assignDate">Date</label>
+        <input type="date" id="assignDate" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-enter">Assign</button>
+  </form>
+</section>
+
+<section class="table-card">
+  <h3>Current Assignments</h3>
+  <table class="data-table" id="assignmentsTable">
+    <thead>
+      <tr><th>Volunteer</th><th>Location / Event</th><th>Date</th><th></th></tr>
+    </thead>
+    <tbody id="assignmentsBody">
+      <!-- rows added by JS -->
+    </tbody>
+  </table>
+  <p class="hint-text" id="emptyHint">No assignments yet — add one above.</p>
+</section>
+
+<section class="table-card">
+  <h3>Locations Overview</h3>
+  <p class="hint-text">How many volunteers are currently assigned to each location/event.</p>
+  <div class="location-grid" id="locationGrid">
+    {% for l in locations %}
+    <div class="location-card" data-location="{{ l }}">
+      <span class="location-name">{{ l }}</span>
+      <span class="location-count" data-role="count">0</span>
+      <span class="location-caption">volunteers assigned</span>
+      <div class="location-names" data-role="names"></div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("assignDate").valueAsDate = new Date();
+
+  // In-browser only for now — nothing here is saved to the server, so a
+  // page refresh clears it. Say the word if you want these persisted.
+  let assignments = [];
+
+  const form = document.getElementById("assignForm");
+  const body = document.getElementById("assignmentsBody");
+  const emptyHint = document.getElementById("emptyHint");
+  const locationGrid = document.getElementById("locationGrid");
+
+  function render() {
+    body.innerHTML = "";
+    emptyHint.style.display = assignments.length ? "none" : "block";
+
+    assignments.forEach((a, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${a.volunteer}</td>
+        <td>${a.location}</td>
+        <td>${a.date}</td>
+        <td><button type="button" class="btn-remove-row" data-index="${i}" title="Remove">&times;</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll(".btn-remove-row").forEach(btn => {
+      btn.addEventListener("click", () => {
+        assignments.splice(parseInt(btn.dataset.index, 10), 1);
+        render();
+      });
+    });
+
+    updateLocationOverview();
+  }
+
+  function updateLocationOverview() {
+    locationGrid.querySelectorAll(".location-card").forEach(card => {
+      const loc = card.dataset.location;
+      const here = assignments.filter(a => a.location === loc);
+      card.querySelector('[data-role="count"]').textContent = here.length;
+      card.querySelector('[data-role="names"]').textContent = here.map(a => a.volunteer).join(", ");
+      card.classList.toggle("has-volunteers", here.length > 0);
+    });
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const volunteer = document.getElementById("volunteer").value;
+    const location = document.getElementById("assignLocation").value;
+    const date = document.getElementById("assignDate").value;
+    if (!volunteer || !location || !date) return;
+
+    assignments.push({ volunteer, location, date });
+    render();
+    form.reset();
+    document.getElementById("assignDate").valueAsDate = new Date();
+  });
+
+  render();
+</script>
+{% endblock %}

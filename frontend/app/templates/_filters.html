@@ -1,0 +1,52 @@
+{#
+  filter_bar renders ONE section's filter form. Its own fields are named
+  "{prefix}date_from" etc, so submitting this form only ever changes this
+  section's filters. Every other section's current values are re-sent as
+  hidden inputs so they come back unchanged on the next page load instead
+  of resetting to defaults.
+#}
+{% macro filter_bar(prefix, filters, is_admin, sellers, events) %}
+{% set current = filters[prefix] %}
+<form method="GET" action="{{ url_for('books.dashboard') }}" class="filter-bar">
+  {% for other_prefix, other in filters.items() %}
+    {% if other_prefix != prefix %}
+      <input type="hidden" name="{{ other_prefix }}date_from" value="{{ other.date_from }}">
+      <input type="hidden" name="{{ other_prefix }}date_to" value="{{ other.date_to }}">
+      <input type="hidden" name="{{ other_prefix }}seller" value="{{ other.seller }}">
+      <input type="hidden" name="{{ other_prefix }}event" value="{{ other.event }}">
+    {% endif %}
+  {% endfor %}
+
+  <div class="field">
+    <label for="{{ prefix }}date_from">From</label>
+    <input type="date" id="{{ prefix }}date_from" name="{{ prefix }}date_from" value="{{ current.date_from }}">
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}date_to">To</label>
+    <input type="date" id="{{ prefix }}date_to" name="{{ prefix }}date_to" value="{{ current.date_to }}">
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}seller">User</label>
+    <select id="{{ prefix }}seller" name="{{ prefix }}seller" {{ 'disabled' if not is_admin else '' }}>
+      {% if is_admin %}
+      <option value="all" {{ 'selected' if current.seller == 'all' }}>All Users</option>
+      {% for s in sellers %}
+      <option value="{{ s }}" {{ 'selected' if current.seller == s }}>{{ s }}</option>
+      {% endfor %}
+      {% else %}
+      <option value="{{ current.seller }}" selected>{{ current.seller }}</option>
+      {% endif %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}event">Event</label>
+    <select id="{{ prefix }}event" name="{{ prefix }}event">
+      <option value="all" {{ 'selected' if current.event == 'all' }}>All Events</option>
+      {% for e in events %}
+      <option value="{{ e }}" {{ 'selected' if current.event == e }}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-filter">Apply Filters</button>
+</form>
+{% endmacro %}
