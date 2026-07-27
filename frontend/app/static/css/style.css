@@ -495,6 +495,15 @@ body.app-body {
   align-items: start;
 }
 
+.stacked-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+
+
 .chart-card, .table-card, .form-card {
   background: #fff;
   border: 1px solid var(--border-soft);
@@ -615,6 +624,12 @@ body.app-body {
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .corner-badge {
   display: flex;
   flex-direction: column;
@@ -646,6 +661,12 @@ body.app-body {
 .field-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
@@ -1040,6 +1061,10 @@ body.app-body {
 .link-download:hover {
   text-decoration: underline;
 }
+.card-header-row .link-download,
+.header-actions .link-download {
+  margin-top: 0;
+}
 
 /* --- User management --- */
 .role-pill {
@@ -1053,9 +1078,14 @@ body.app-body {
   background: rgba(201, 138, 42, 0.18);
   color: #8a5c12;
 }
+.role-volunteer,
 .role-user {
   background: rgba(14, 143, 111, 0.15);
   color: var(--teal-dark);
+}
+.role-commander {
+  background: rgba(88, 71, 201, 0.15);
+  color: #4c3d9e;
 }
 
 .status-dot {
@@ -1081,6 +1111,37 @@ body.app-body {
 .btn-toggle:hover {
   border-color: var(--teal-mid);
   background: rgba(14, 143, 111, 0.06);
+}
+
+.btn-danger {
+  color: var(--red, #c0392b);
+  border-color: var(--red, #c0392b);
+}
+.btn-danger:hover {
+  background: rgba(192, 57, 43, 0.08);
+}
+
+.password-disclosure summary {
+  list-style: none;
+  display: inline-block;
+}
+.password-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+.password-disclosure[open] summary {
+  margin-bottom: 6px;
+}
+.inline-password-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.inline-password-form input[type="password"] {
+  padding: 5px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  width: 140px;
 }
 
 /* ======================================================================
@@ -1121,6 +1182,7 @@ body.no-scroll {
   .kpi-row { grid-template-columns: repeat(3, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
   .field-row { grid-template-columns: 1fr; }
+  .field-row-2 { grid-template-columns: 1fr; }
   .batch-meta { grid-template-columns: repeat(2, 1fr); }
 }
 

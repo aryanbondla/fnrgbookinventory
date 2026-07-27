@@ -28,7 +28,6 @@ from flask import (
 from openpyxl import load_workbook
 
 from . import dummy_data as data
-from . import analytics as an
 
 main_bp = Blueprint("main", __name__)
 
@@ -188,43 +187,6 @@ def sell_entry():
         book_titles=[t for t, _ in data.BOOKS],
         categories=data.CATEGORIES,
         my_sales=my_sales,
-    )
-
-
-# --------------------------------------------------------------------- #
-# Analytics (admin)
-# --------------------------------------------------------------------- #
-@main_bp.route("/analytics", methods=["GET"])
-@admin_required
-def analytics_page():
-    default_from, default_to = an.last_n_days_range(60)
-    date_from = request.args.get("date_from") or default_from
-    date_to = request.args.get("date_to") or default_to
-    seller = request.args.get("seller") or "all"
-
-    rows = an.filter_sales(data.SALES, date_from=date_from, date_to=date_to, seller=seller)
-
-    kpis = an.summary(rows)
-    trend = an.revenue_profit_by_day(rows)
-    profit_cat = an.profit_by_category(rows)
-    qty_cat = an.qty_by_category(rows)
-    leaderboard = an.leaderboard_by_seller(rows)
-    top_bks = an.top_books(rows, limit=8)
-
-    sellers = sorted({u["username"] for u in data.USERS if u["role"] == "user"})
-
-    return render_template(
-        "analytics.html",
-        kpis=kpis,
-        trend=trend,
-        profit_cat=profit_cat,
-        qty_cat=qty_cat,
-        leaderboard=leaderboard,
-        top_books=top_bks,
-        sellers=sellers,
-        date_from=date_from,
-        date_to=date_to,
-        selected_seller=seller,
     )
 
 

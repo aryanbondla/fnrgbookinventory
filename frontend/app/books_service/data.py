@@ -12,22 +12,27 @@ shared table.
 import random
 from datetime import date, timedelta
 
+# Book catalog — each title carries its own shorthand (used on the Inward
+# Stock rows / backups so long titles are quick to scan) and category.
+# Kept as dicts (rather than the old (title, category) tuples) so the
+# shorthand has somewhere to live; see the Master Data page / master_data
+# route for where these get added to through the UI.
 BOOKS = [
-    ("Bhagavad Gita As It Is", "Philosophy"),
-    ("Srimad Bhagavatam Canto 1", "Scripture"),
-    ("Sri Chaitanya Charitamrita", "Biography"),
-    ("Nectar of Devotion", "Philosophy"),
-    ("Nectar of Instruction", "Philosophy"),
-    ("Krishna Book", "Storytelling"),
-    ("Science of Self Realization", "Philosophy"),
-    ("Beyond Illusion and Doubt", "Essays"),
-    ("Life Comes From Life", "Science"),
-    ("Perfect Questions Perfect Answers", "Philosophy"),
-    ("The Higher Taste (Cookbook)", "Lifestyle"),
-    ("Easy Journey to Other Planets", "Philosophy"),
+    {"title": "Bhagavad Gita As It Is", "short_title": "BG", "category": "Philosophy"},
+    {"title": "Srimad Bhagavatam Canto 1", "short_title": "SB1", "category": "Scripture"},
+    {"title": "Sri Chaitanya Charitamrita", "short_title": "CC", "category": "Biography"},
+    {"title": "Nectar of Devotion", "short_title": "NOD", "category": "Philosophy"},
+    {"title": "Nectar of Instruction", "short_title": "NOI", "category": "Philosophy"},
+    {"title": "Krishna Book", "short_title": "KB", "category": "Storytelling"},
+    {"title": "Science of Self Realization", "short_title": "SSR", "category": "Philosophy"},
+    {"title": "Beyond Illusion and Doubt", "short_title": "BID", "category": "Essays"},
+    {"title": "Life Comes From Life", "short_title": "LCFL", "category": "Science"},
+    {"title": "Perfect Questions Perfect Answers", "short_title": "PQPA", "category": "Philosophy"},
+    {"title": "The Higher Taste (Cookbook)", "short_title": "THT", "category": "Lifestyle"},
+    {"title": "Easy Journey to Other Planets", "short_title": "EJOP", "category": "Philosophy"},
 ]
 
-CATEGORIES = sorted({c for _, c in BOOKS})
+CATEGORIES = sorted({b["category"] for b in BOOKS})
 
 # Common places books are purchased from — seeds the "Source Purchased
 # From" suggestions on the Inward Stock page. Any new source typed in
@@ -54,6 +59,17 @@ LOCATIONS = [
     "College Fest - JNTU",
     "Ratha Yatra Festival",
     "Home Program - Madhapur",
+]
+
+# Named preaching programs / festivals books get distributed at — distinct
+# from LOCATIONS (the physical place). Managed from the Master Data page
+# alongside categories, languages and locations.
+EVENTS = [
+    "Janmashtami Festival",
+    "Ratha Yatra Festival",
+    "Gita Jayanti",
+    "College Fest - JNTU",
+    "Sunday Feast Program",
 ]
 
 # --- Inventory -----------------------------------------------------------
@@ -85,7 +101,8 @@ def _generate_sales(n=70, days_back=60, seed=42):
     today = date.today()
     rows = []
     for i in range(1, n + 1):
-        title, category = rng.choice(BOOKS)
+        book = rng.choice(BOOKS)
+        title, category = book["title"], book["category"]
         seller = rng.choice(sellers)
         day = today - timedelta(days=rng.randint(0, days_back))
         qty = rng.randint(1, 6)
@@ -153,3 +170,70 @@ PURCHASES = [
 
 def next_purchase_id():
     return (max((p["id"] for p in PURCHASES), default=0)) + 1
+
+
+# --- Master data helpers --------------------------------------------------
+# Small, dependency-free add/lookup helpers backing the Master Data page
+# (see books_service/routes.py: master_data()). Each keeps its own list
+# de-duplicated and sorted where that list is display-ordered.
+
+def find_book(title):
+    title = (title or "").strip()
+    return next((b for b in BOOKS if b["title"].lower() == title.lower()), None)
+
+
+def add_book(title, short_title, category):
+    """
+    Adds a new title to the catalog. Returns (book, created) — created is
+    False if the title already exists (nothing is overwritten in that
+    case, so this is safe to call from both the Master Data page and the
+    Inward Stock "+ Add New Book" flow without clobbering an existing
+    entry). Also grows CATEGORIES if this introduces a new one.
+    """
+    title = (title or "").strip()
+    short_title = (short_title or "").strip()
+    category = (category or "").strip() or "Uncategorized"
+
+    existing = find_book(title)
+    if existing:
+        return existing, False
+
+    book = {"title": title, "short_title": short_title, "category": category}
+    BOOKS.append(book)
+    add_category(category)
+    return book, True
+
+
+def add_category(name):
+    global CATEGORIES
+    name = (name or "").strip()
+    if not name:
+        return False
+    if name in CATEGORIES:
+        return False
+    CATEGORIES = sorted(set(CATEGORIES) | {name})
+    return True
+
+
+def add_language(name):
+    name = (name or "").strip()
+    if not name or name in LANGUAGES:
+        return False
+    LANGUAGES.append(name)
+    return True
+
+
+def add_location(name):
+    name = (name or "").strip()
+    if not name or name in LOCATIONS:
+        return False
+    LOCATIONS.append(name)
+    return True
+
+
+def add_event(name):
+    name = (name or "").strip()
+    if not name or name in EVENTS:
+        return False
+    EVENTS.append(name)
+    return True
